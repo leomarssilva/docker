@@ -1,32 +1,30 @@
-FROM docker:19.03
+FROM docker:19.03.8-ubuntu-18.04
 
 # https://github.com/docker/docker/blob/master/project/PACKAGERS.md#runtime-dependencies
 RUN set -eux; \
-	apk add --no-cache \
+	apt update && apt install -y \
 		btrfs-progs \
 		e2fsprogs \
-		e2fsprogs-extra \
 		iptables \
 		openssl \
-		shadow-uidmap \
+		uidmap \
 		xfsprogs \
-		xz \
+		xz-utils \
+                iproute2 \
 # pigz: https://github.com/moby/moby/pull/35697 (faster gzip implementation)
 		pigz \
 	; \
 # only install zfs if it's available for the current architecture
 # https://git.alpinelinux.org/cgit/aports/tree/main/zfs/APKBUILD?h=3.6-stable#n9 ("all !armhf !ppc64le" as of 2017-11-01)
 # "apk info XYZ" exits with a zero exit code but no output when the package exists but not for this arch
-	if zfs="$(apk info --no-cache --quiet zfs)" && [ -n "$zfs" ]; then \
-		apk add --no-cache zfs; \
-	fi
+apt install -y zfsutils-linux || true
 
 # TODO aufs-tools
 
 # set up subuid/subgid so that "--userns-remap=default" works out-of-the-box
 RUN set -x \
-	&& addgroup -S dockremap \
-	&& adduser -S -G dockremap dockremap \
+	&& addgroup --system dockremap \
+	&& adduser --system --ingroup dockremap dockremap \
 	&& echo 'dockremap:165536:65536' >> /etc/subuid \
 	&& echo 'dockremap:165536:65536' >> /etc/subgid
 
